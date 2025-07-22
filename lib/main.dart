@@ -9,7 +9,12 @@ class CurrencyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Cotações Financeiras',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
       home: HomeScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
@@ -26,6 +31,7 @@ class HomeScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // Ícone principal
                 Icon(
                   Icons.monetization_on,
                   size: 120,
@@ -33,8 +39,9 @@ class HomeScreen extends StatelessWidget {
                 ),
                 SizedBox(height: 30),
                 
+                // Título principal
                 Text(
-                  'BSF Cotações Financeiras',
+                  'Cotações Financeiras',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 32,
@@ -54,13 +61,61 @@ class HomeScreen extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
                 SizedBox(height: 50),
-
+                
                 // Botão para navegar para a lista de cotações
                 ElevatedButton(
                   onPressed: () {
-                    // Placeholder para a navegação
+                    // TODO: Navegar para a tela de cotações
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Funcionalidade em desenvolvimento!'),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
                   },
-                  child: Text('Ver Cotações'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.blue[900],
+                    padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                  ),
+                  child: Text(
+                    'Ver Cotações',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20),
+                
+                // Informação adicional
+                Container(
+                  padding: EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: Colors.white70,
+                        size: 20,
+                      ),
+                      SizedBox(width: 10),
+                      Text(
+                        'Dados via exchangerate-api.com',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
