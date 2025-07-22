@@ -26,7 +26,6 @@ class HomeScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Ícone principal
                 Icon(
                   Icons.monetization_on,
                   size: 120,
@@ -34,7 +33,6 @@ class HomeScreen extends StatelessWidget {
                 ),
                 SizedBox(height: 30),
                 
-                // Título principal
                 Text(
                   'BSF Cotações Financeiras',
                   style: TextStyle(
@@ -43,6 +41,26 @@ class HomeScreen extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                   textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 10),
+                
+                // Subtítulo
+                Text(
+                  'Acompanhe as cotações das principais moedas em tempo real',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 18,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 50),
+
+                // Botão para navegar para a lista de cotações
+                ElevatedButton(
+                  onPressed: () {
+                    // Placeholder para a navegação
+                  },
+                  child: Text('Ver Cotações'),
                 ),
               ],
             ),
