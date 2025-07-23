@@ -1,8 +1,8 @@
-// screens/currency_list_screen.dart
 import 'package:flutter/material.dart';
 import '../models/exchange_rates.dart';
 import '../services/currency_service.dart';
 import '../utils/app_colors.dart';
+import 'currency_detail_screen.dart';
 
 class CurrencyListScreen extends StatefulWidget {
   @override
@@ -118,7 +118,6 @@ class _CurrencyListScreenState extends State<CurrencyListScreen> {
 
     return Column(
       children: [
-        // Header com informações da atualização
         Container(
           width: double.infinity,
           padding: EdgeInsets.all(16),
@@ -136,8 +135,6 @@ class _CurrencyListScreenState extends State<CurrencyListScreen> {
             ],
           ),
         ),
-        
-        // Lista de cotações
         Expanded(
           child: ListView.builder(
             itemCount: mainCurrencies.length,
@@ -168,7 +165,18 @@ class _CurrencyListScreenState extends State<CurrencyListScreen> {
                   subtitle: Text('1 USD = ${rate.toStringAsFixed(4)} $currencyCode'),
                   trailing: Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
-                    // TODO: Navegar para detalhes da moeda
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CurrencyDetailScreen(
+                          currencyCode: currencyCode,
+                          currencyName: currencyNames[currencyCode] ?? currencyCode,
+                          rate: rate,
+                          baseCode: exchangeRates!.baseCode,
+                          lastUpdate: exchangeRates!.timeLastUpdate,
+                        ),
+                      ),
+                    );
                   },
                 ),
               );
