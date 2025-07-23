@@ -1,7 +1,9 @@
+// screens/home_screen.dart
 import 'package:flutter/material.dart';
 import '../utils/app_colors.dart';
 import '../widgets/custom_elevated_button.dart';
 import '../widgets/info_container.dart';
+import 'currency_list_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   @override
@@ -66,23 +68,19 @@ class HomeScreen extends StatelessWidget {
   Widget _buildNavigationButton(BuildContext context) {
     return CustomElevatedButton(
       text: 'Ver Cotações',
-      onPressed: () => _showDevelopmentMessage(context),
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => CurrencyListScreen()),
+        );
+      },
     );
   }
 
   Widget _buildInfoSection() {
     return InfoContainer(
       icon: Icons.info_outline,
-      text: 'Dados via exchangerate-api.com',
-    );
-  }
-
-  void _showDevelopmentMessage(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Funcionalidade em desenvolvimento!'),
-        backgroundColor: AppColors.snackBarWarning,
-      ),
+      text: 'Dados atualizados em tempo real',
     );
   }
 }
