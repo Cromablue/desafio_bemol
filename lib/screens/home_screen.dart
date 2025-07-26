@@ -1,11 +1,13 @@
-// screens/home_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../utils/app_colors.dart';
 import '../widgets/custom_elevated_button.dart';
 import '../widgets/info_container.dart';
-import 'currency_list_screen.dart';
+import 'navigation_host_screen.dart';
 
 class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -17,14 +19,14 @@ class HomeScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildMainIcon(),
-                SizedBox(height: 30),
+                _buildMainLogo(),
+                const SizedBox(height: 30),
                 _buildMainTitle(),
-                SizedBox(height: 10),
+                const SizedBox(height: 10),
                 _buildSubtitle(),
-                SizedBox(height: 50),
+                const SizedBox(height: 50),
                 _buildNavigationButton(context),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 _buildInfoSection(),
               ],
             ),
@@ -34,17 +36,17 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMainIcon() {
-    return Icon(
-      Icons.monetization_on,
-      size: 120,
-      color: AppColors.white,
+  Widget _buildMainLogo() {
+    return SvgPicture.asset(
+      'assets/logo.svg',
+      height: 120,
+      colorFilter: ColorFilter.mode(AppColors.white, BlendMode.srcIn),
     );
   }
 
   Widget _buildMainTitle() {
-    return Text(
-      'Cotações Financeiras',
+    return const Text(
+      'BSF Câmbio',
       style: TextStyle(
         color: AppColors.white,
         fontSize: 32,
@@ -55,8 +57,8 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildSubtitle() {
-    return Text(
-      'Acompanhe as cotações das principais moedas em tempo real',
+    return const Text(
+      'Sua plataforma para cotações de moedas em tempo real. Acompanhe, compare e planeje.',
       style: TextStyle(
         color: AppColors.white70,
         fontSize: 18,
@@ -69,18 +71,18 @@ class HomeScreen extends StatelessWidget {
     return CustomElevatedButton(
       text: 'Ver Cotações',
       onPressed: () {
-        Navigator.push(
+        Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => CurrencyListScreen()),
+          MaterialPageRoute(builder: (context) => const NavigationHostScreen()),
         );
       },
     );
   }
 
   Widget _buildInfoSection() {
-    return InfoContainer(
+    return const InfoContainer(
       icon: Icons.info_outline,
-      text: 'Dados atualizados em tempo real',
+      text: 'Dados fornecidos em tempo real',
     );
   }
 }
