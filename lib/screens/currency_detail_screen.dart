@@ -39,9 +39,6 @@ class _CurrencyDetailScreenState extends State<CurrencyDetailScreen>
   String _previousBaseText = '';
   String _previousTargetText = '';
 
-  // Controle de dropdowns
-  bool _isFromDropdownOpen = false;
-  bool _isToDropdownOpen = false;
   String _fromCurrency = '';
   String _toCurrency = '';
 
@@ -49,21 +46,20 @@ class _CurrencyDetailScreenState extends State<CurrencyDetailScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    
-    // Inicializa com as moedas da tela anterior
+
     _fromCurrency = widget.baseCode;
     _toCurrency = widget.currency.code;
-    
+
     final rateFormatter = NumberFormat('#,##0.00', 'pt_BR');
     _baseAmountController = TextEditingController(text: "1,00");
     _targetAmountController = TextEditingController(text: rateFormatter.format(widget.rate));
-    
+
     _previousBaseText = _baseAmountController.text;
     _previousTargetText = _targetAmountController.text;
-    
+
     _baseAmountController.addListener(_onBaseAmountChanged);
     _targetAmountController.addListener(_onTargetAmountChanged);
-    
+
     _baseFocusNode.addListener(_onBaseFocusChanged);
     _targetFocusNode.addListener(_onTargetFocusChanged);
   }
@@ -75,19 +71,19 @@ class _CurrencyDetailScreenState extends State<CurrencyDetailScreen>
     _targetAmountController.removeListener(_onTargetAmountChanged);
     _baseFocusNode.removeListener(_onBaseFocusChanged);
     _targetFocusNode.removeListener(_onTargetFocusChanged);
-    
+
     _baseAmountController.dispose();
     _targetAmountController.dispose();
     _baseFocusNode.dispose();
     _targetFocusNode.dispose();
+    
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    if (state == AppLifecycleState.paused || 
-        state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
       _dismissAllSelections();
     }
   }
@@ -97,13 +93,6 @@ class _CurrencyDetailScreenState extends State<CurrencyDetailScreen>
       _baseFocusNode.unfocus();
       _targetFocusNode.unfocus();
       FocusScope.of(context).unfocus();
-      
-      if (_isFromDropdownOpen || _isToDropdownOpen) {
-        setState(() {
-          _isFromDropdownOpen = false;
-          _isToDropdownOpen = false;
-        });
-      }
     }
   }
 
@@ -111,12 +100,6 @@ class _CurrencyDetailScreenState extends State<CurrencyDetailScreen>
     if (_baseFocusNode.hasFocus) {
       setState(() => _isEditingBase = true);
       _targetFocusNode.unfocus();
-      if (_isFromDropdownOpen || _isToDropdownOpen) {
-        setState(() {
-          _isFromDropdownOpen = false;
-          _isToDropdownOpen = false;
-        });
-      }
     }
   }
 
@@ -124,12 +107,6 @@ class _CurrencyDetailScreenState extends State<CurrencyDetailScreen>
     if (_targetFocusNode.hasFocus) {
       setState(() => _isEditingBase = false);
       _baseFocusNode.unfocus();
-      if (_isFromDropdownOpen || _isToDropdownOpen) {
-        setState(() {
-          _isFromDropdownOpen = false;
-          _isToDropdownOpen = false;
-        });
-      }
     }
   }
 
@@ -152,11 +129,11 @@ class _CurrencyDetailScreenState extends State<CurrencyDetailScreen>
 
   void _updateTextField(TextEditingController controller) {
     if (widget.rate == 0) return;
-    
+
     final double result = _isEditingBase
         ? _getAmountFromController(_baseAmountController) * widget.rate
         : _getAmountFromController(_targetAmountController) / widget.rate;
-    
+
     final formattedValue = NumberFormat('#,##0.00', 'pt_BR').format(result);
 
     controller.value = controller.value.copyWith(
@@ -168,20 +145,55 @@ class _CurrencyDetailScreenState extends State<CurrencyDetailScreen>
     _previousTargetText = _targetAmountController.text;
   }
 
+  // Abre modal para seleção de moeda, isFromCurrency indica se é moeda "De" ou "Para"
+  Future<void> _openCurrencySelector(bool isFromCurrency) async {
+    FocusScope.of(context).unfocus(); // fecha teclado
+
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (BuildContext context) {
+        return ListView.builder(
+          itemCount: widget.supportedCodes.length,
+          itemBuilder: (context, index) {
+            final currency = widget.supportedCodes[index];
+            return ListTile(
+              title: Text(currency.code),
+              subtitle: Text(CurrencyData.getFullName(currency.code, currency.name)),
+              onTap: () => Navigator.pop(context, currency.code),
+            );
+          },
+        );
+      },
+    );
+
+    if (selected != null) {
+      setState(() {
+        if (isFromCurrency) {
+          _fromCurrency = selected;
+        } else {
+          _toCurrency = selected;
+        }
+      });
+    }
+  }
+
   void _swapCurrencies() {
     _dismissAllSelections();
-    
+
     final tempText = _baseAmountController.text;
     _baseAmountController.text = _targetAmountController.text;
     _targetAmountController.text = tempText;
-    
+
     final tempCurrency = _fromCurrency;
     _fromCurrency = _toCurrency;
     _toCurrency = tempCurrency;
-    
+
     _previousBaseText = _baseAmountController.text;
     _previousTargetText = _targetAmountController.text;
-    
+
     setState(() {
       _isEditingBase = !_isEditingBase;
     });
@@ -295,27 +307,14 @@ class _CurrencyDetailScreenState extends State<CurrencyDetailScreen>
               ],
             ),
             const SizedBox(height: 20),
-            // Seletores de moeda
+            // Seletores de moeda agora abrem modal popup
             Row(
               children: [
                 Expanded(
                   child: _buildCurrencySelector(
                     label: 'De',
                     value: _fromCurrency,
-                    isOpen: _isFromDropdownOpen,
-                    onTap: () {
-                      _dismissAllSelections();
-                      setState(() {
-                        _isFromDropdownOpen = !_isFromDropdownOpen;
-                        _isToDropdownOpen = false;
-                      });
-                    },
-                    onChanged: (val) {
-                      setState(() {
-                        _fromCurrency = val ?? _fromCurrency;
-                        _isFromDropdownOpen = false;
-                      });
-                    },
+                    onTap: () => _openCurrencySelector(true),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -335,20 +334,7 @@ class _CurrencyDetailScreenState extends State<CurrencyDetailScreen>
                   child: _buildCurrencySelector(
                     label: 'Para',
                     value: _toCurrency,
-                    isOpen: _isToDropdownOpen,
-                    onTap: () {
-                      _dismissAllSelections();
-                      setState(() {
-                        _isToDropdownOpen = !_isToDropdownOpen;
-                        _isFromDropdownOpen = false;
-                      });
-                    },
-                    onChanged: (val) {
-                      setState(() {
-                        _toCurrency = val ?? _toCurrency;
-                        _isToDropdownOpen = false;
-                      });
-                    },
+                    onTap: () => _openCurrencySelector(false),
                   ),
                 ),
               ],
@@ -362,9 +348,7 @@ class _CurrencyDetailScreenState extends State<CurrencyDetailScreen>
   Widget _buildCurrencySelector({
     required String label,
     required String value,
-    required bool isOpen,
     required VoidCallback onTap,
-    required Function(String?) onChanged,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -402,61 +386,14 @@ class _CurrencyDetailScreenState extends State<CurrencyDetailScreen>
                   ),
                 ),
                 Icon(
-                  isOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                  Icons.keyboard_arrow_down,
                   color: Colors.grey.shade600,
                 ),
               ],
             ),
           ),
         ),
-        if (isOpen) _buildDropdownMenu(onChanged),
       ],
-    );
-  }
-
-  Widget _buildDropdownMenu(Function(String?) onChanged) {
-    return Container(
-      margin: const EdgeInsets.only(top: 4),
-      constraints: const BoxConstraints(maxHeight: 200),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: ListView.builder(
-        shrinkWrap: true,
-        itemCount: widget.supportedCodes.length,
-        itemBuilder: (context, index) {
-          final currency = widget.supportedCodes[index];
-          return ListTile(
-            dense: true,
-            title: Text(
-              currency.code,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-            subtitle: Text(
-              CurrencyData.getFullName(currency.code, currency.name),
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade600,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-            onTap: () {
-              onChanged(currency.code);
-            },
-          );
-        },
-      ),
     );
   }
 
