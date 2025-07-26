@@ -8,17 +8,17 @@ class InfoContainer extends StatelessWidget {
   final double? fontSize;
 
   const InfoContainer({
-    Key? key,
+    super.key,
     required this.icon,
     required this.text,
     this.iconSize = 20,
     this.fontSize = 14,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(15),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: AppColors.containerBackground,
         borderRadius: BorderRadius.circular(10),
@@ -31,7 +31,7 @@ class InfoContainer extends StatelessWidget {
             color: AppColors.white70,
             size: iconSize,
           ),
-          SizedBox(width: 10),
+          const SizedBox(width: 10),
           Text(
             text,
             style: TextStyle(
