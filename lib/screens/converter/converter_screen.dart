@@ -26,6 +26,7 @@ class ConverterScreen extends StatefulWidget {
 class _ConverterScreenState extends State<ConverterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
+  final _amountFocusNode = FocusNode();
   String _fromCurrency = 'BRL';
   String _toCurrency = 'USD';
   bool _isLoading = false;
@@ -45,8 +46,16 @@ class _ConverterScreenState extends State<ConverterScreen> {
   void dispose() {
     _amountController.removeListener(_onAmountChanged);
     _amountController.dispose();
+    _amountFocusNode.unfocus();
+    _amountFocusNode.dispose(); // Importante: descarta o FocusNode
     _debounce?.cancel();
     super.dispose();
+  }
+
+  void _dismissFocus() {
+    if (_amountFocusNode.hasFocus) {
+      _amountFocusNode.unfocus();
+    }
   }
 
   void _onAmountChanged() {
@@ -62,6 +71,7 @@ class _ConverterScreenState extends State<ConverterScreen> {
       _fromCurrency = _toCurrency;
       _toCurrency = temp;
     });
+    _dismissFocus(); // Fecha teclado ao trocar moedas
     if (_amountController.text.isNotEmpty) {
       _performConversion();
     }
@@ -81,16 +91,20 @@ class _ConverterScreenState extends State<ConverterScreen> {
       });
       return;
     }
-    
-    setState(() { _isLoading = true; _error = null; });
-    
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
     try {
       final amount = _getAmountFromController();
-      final result = await CurrencyService.convertCurrency(from: _fromCurrency, to: _toCurrency, amount: amount);
+      final result = await CurrencyService.convertCurrency(
+          from: _fromCurrency, to: _toCurrency, amount: amount);
       if (mounted) setState(() => _conversionResult = result);
     } catch (e) {
       final friendlyError = ErrorHandler.getFriendlyError(e);
-      if(mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(friendlyError), backgroundColor: Colors.red),
         );
@@ -101,27 +115,34 @@ class _ConverterScreenState extends State<ConverterScreen> {
   }
 
   double _getAmountFromController() {
-    String cleanText = _amountController.text.replaceAll('.', '').replaceAll(',', '.');
+    String cleanText =
+        _amountController.text.replaceAll('.', '').replaceAll(',', '.');
     return double.tryParse(cleanText) ?? 0.0;
   }
-  
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Conversor de Moedas'),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildInputCard(),
-              const SizedBox(height: 24),
-              _buildResultArea(),
-            ],
+    return GestureDetector(
+      onTap: () {
+        _dismissFocus(); // Remove foco e fecha teclado ao tocar fora
+        FocusScope.of(context).unfocus();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Conversor de Moedas'),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildInputCard(),
+                const SizedBox(height: 24),
+                _buildResultArea(),
+              ],
+            ),
           ),
         ),
       ),
@@ -138,18 +159,23 @@ class _ConverterScreenState extends State<ConverterScreen> {
           children: [
             TextFormField(
               controller: _amountController,
+              focusNode: _amountFocusNode, // Associar o FocusNode para controle
               decoration: InputDecoration(
                 labelText: 'Valor',
                 prefixIcon: Padding(
                   padding: const EdgeInsets.all(14.0),
                   child: Text(
                     CurrencyData.getCurrencySymbol(_fromCurrency),
-                    style: TextStyle(fontSize: 20, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    style: TextStyle(
+                        fontSize: 20,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primary),
+              style:
+                  TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primary),
               keyboardType: TextInputType.number,
               inputFormatters: [
                 FilteringTextInputFormatter.digitsOnly,
@@ -210,14 +236,22 @@ class _ConverterScreenState extends State<ConverterScreen> {
 
   Widget _buildResultArea() {
     if (_isLoading) {
-      return const Center(child: Padding(padding: EdgeInsets.all(16.0), child: CircularProgressIndicator()));
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: CircularProgressIndicator(),
+        ),
+      );
     }
     if (_error != null) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 16.0),
-          child: Text(_error!, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-        )
+          child: Text(_error!,
+              style:
+                  const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center),
+        ),
       );
     }
     if (_conversionResult != null) {
