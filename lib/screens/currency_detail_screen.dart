@@ -76,7 +76,7 @@ class _CurrencyDetailScreenState extends State<CurrencyDetailScreen>
     _targetAmountController.dispose();
     _baseFocusNode.dispose();
     _targetFocusNode.dispose();
-    
+
     super.dispose();
   }
 
@@ -307,7 +307,7 @@ class _CurrencyDetailScreenState extends State<CurrencyDetailScreen>
               ],
             ),
             const SizedBox(height: 20),
-            // Seletores de moeda agora abrem modal popup
+            // Currency selectors and swap button with improved swap style
             Row(
               children: [
                 Expanded(
@@ -318,15 +318,21 @@ class _CurrencyDetailScreenState extends State<CurrencyDetailScreen>
                   ),
                 ),
                 const SizedBox(width: 16),
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.swap_horiz, color: Colors.white, size: 24),
-                    onPressed: _swapCurrencies,
-                    tooltip: 'Trocar moedas',
+                Material(
+                  shape: const CircleBorder(),
+                  color: Colors.white,
+                  elevation: 2,
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: _swapCurrencies,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Icon(
+                        Icons.swap_horiz,
+                        color: AppColors.primary,
+                        size: 28,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
