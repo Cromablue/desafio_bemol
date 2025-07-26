@@ -29,12 +29,13 @@ class CurrencyListScreen extends StatefulWidget {
 }
 
 class CurrencyListScreenState extends State<CurrencyListScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   ExchangeRates? exchangeRates;
   bool isLoading = true;
   String? error;
   String _selectedBaseCurrency = 'BRL';
   final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode(); // Adicionado FocusNode para controle
   List<SupportedCode> _filteredCurrencies = [];
   Timer? _debounce;
   final _rateFormatter = NumberFormat('#,##0.00', 'pt_BR');
@@ -43,20 +44,25 @@ class CurrencyListScreenState extends State<CurrencyListScreen>
   bool _isAscending = true;
 
   TabController? _tabController;
-  Set<String> _favorites = {}; // Começa vazio, será carregado do disco
+  Set<String> _favorites = {};
+
+  // Controle de estado para dropdown
+  bool _isDropdownOpen = false;
+  final GlobalKey _dropdownKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this); // Observer para mudanças de estado
     _tabController = TabController(length: 2, vsync: this);
     _filteredCurrencies = widget.supportedCodes;
     _searchController.addListener(_onSearchChanged);
 
-    _tabController?.addListener(() {
-      if (_tabController?.indexIsChanging ?? false) {
-        FocusScope.of(context).unfocus();
-      }
-    });
+    // Melhor controle de mudança de tabs
+    _tabController?.addListener(_onTabChanged);
+
+    // Listener para detectar quando o foco é perdido
+    _searchFocusNode.addListener(_onSearchFocusChanged);
 
     _loadFavorites().then((_) {
       fetchExchangeRates();
@@ -65,11 +71,59 @@ class CurrencyListScreenState extends State<CurrencyListScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _tabController?.removeListener(_onTabChanged);
     _tabController?.dispose();
     _debounce?.cancel();
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
+    _searchFocusNode.removeListener(_onSearchFocusChanged);
+    _searchFocusNode.dispose();
     super.dispose();
+  }
+
+  // Detecta mudanças no ciclo de vida da aplicação
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.paused || 
+        state == AppLifecycleState.inactive) {
+      _dismissAllSelections();
+    }
+  }
+
+  // Método centralizado para dispensar todas as seleções
+  void _dismissAllSelections() {
+    if (mounted) {
+      // Remove foco do campo de busca
+      _searchFocusNode.unfocus();
+      
+      // Fecha dropdown se estiver aberto
+      if (_isDropdownOpen) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        setState(() {
+          _isDropdownOpen = false;
+        });
+      }
+      
+      // Remove qualquer outro foco ativo
+      FocusScope.of(context).unfocus();
+    }
+  }
+
+  void _onTabChanged() {
+    if (_tabController?.indexIsChanging ?? false) {
+      _dismissAllSelections();
+    }
+  }
+
+  void _onSearchFocusChanged() {
+    // Fecha dropdown quando o campo de busca recebe foco
+    if (_searchFocusNode.hasFocus && _isDropdownOpen) {
+      setState(() {
+        _isDropdownOpen = false;
+      });
+    }
   }
 
   void _onSearchChanged() {
@@ -121,6 +175,9 @@ class CurrencyListScreenState extends State<CurrencyListScreen>
   }
 
   void _onSortChanged(SortCriteria criteria) {
+    // Fecha dropdown ao alterar ordenação
+    _dismissAllSelections();
+    
     setState(() {
       if (_sortCriteria == criteria) {
         _isAscending = !_isAscending;
@@ -177,42 +234,75 @@ class CurrencyListScreenState extends State<CurrencyListScreen>
     await prefs.setStringList('favorite_currencies', _favorites.toList());
   }
 
+  // Método para navegar com cleanup adequado
+  Future<void> _navigateToDetail(SupportedCode currency, double rate, bool isVolatile) async {
+    _dismissAllSelections();
+    
+    // Aguarda um frame para garantir que as seleções foram fechadas
+    await Future.delayed(const Duration(milliseconds: 100));
+    
+    if (mounted) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CurrencyDetailScreen(
+            currency: currency,
+            rate: rate,
+            baseCode: _selectedBaseCurrency,
+            lastUpdate: exchangeRates!.timeLastUpdate,
+            isVolatile: isVolatile,
+            supportedCodes: widget.supportedCodes,
+          ),
+        ),
+      );
+      
+      // Cleanup após retornar da tela de detalhe
+      if (mounted) {
+        _dismissAllSelections();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mercado de Câmbio'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'TODAS AS MOEDAS'),
-            Tab(text: 'FAVORITAS'),
+    return GestureDetector(
+      // Detecta toques fora dos elementos para fechar seleções
+      onTap: () => _dismissAllSelections(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Mercado de Câmbio'),
+          bottom: TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(text: 'TODAS AS MOEDAS'),
+              Tab(text: 'FAVORITAS'),
+            ],
+          ),
+        ),
+        body: Column(
+          children: [
+            _buildHeader(),
+            _buildSearchBar(),
+            _buildListHeader(),
+            Expanded(
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : error != null
+                      ? _buildErrorState(error!)
+                      : TabBarView(
+                          controller: _tabController,
+                          children: [
+                            _buildCurrencyList(_filteredCurrencies),
+                            _buildCurrencyList(
+                              _filteredCurrencies
+                                  .where((c) => _favorites.contains(c.code))
+                                  .toList(),
+                            ),
+                          ],
+                        ),
+            ),
           ],
         ),
-      ),
-      body: Column(
-        children: [
-          _buildHeader(),
-          _buildSearchBar(),
-          _buildListHeader(),
-          Expanded(
-            child: isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : error != null
-                    ? _buildErrorState(error!)
-                    : TabBarView(
-                        controller: _tabController,
-                        children: [
-                          _buildCurrencyList(_filteredCurrencies),
-                          _buildCurrencyList(
-                            _filteredCurrencies
-                                .where((c) => _favorites.contains(c.code))
-                                .toList(),
-                          ),
-                        ],
-                      ),
-          ),
-        ],
       ),
     );
   }
@@ -272,7 +362,10 @@ class CurrencyListScreenState extends State<CurrencyListScreen>
       return exchangeRates?.conversionRates[currency.code] != null;
     }).toList();
     return RefreshIndicator(
-      onRefresh: () => fetchExchangeRates(),
+      onRefresh: () async {
+        _dismissAllSelections();
+        await fetchExchangeRates();
+      },
       child: ListView.separated(
         padding: const EdgeInsets.only(bottom: 16),
         itemCount: validCurrencies.length,
@@ -312,22 +405,7 @@ class CurrencyListScreenState extends State<CurrencyListScreen>
         style: const TextStyle(
             fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 0.5),
       ),
-      onTap: () {
-        FocusScope.of(context).unfocus();
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => CurrencyDetailScreen(
-              currency: currency,
-              rate: rate,
-              baseCode: _selectedBaseCurrency,
-              lastUpdate: exchangeRates!.timeLastUpdate,
-              isVolatile: isVolatile,
-              supportedCodes: widget.supportedCodes,
-            ),
-          ),
-        );
-      },
+      onTap: () => _navigateToDetail(currency, rate, isVolatile),
     );
   }
 
@@ -345,9 +423,26 @@ class CurrencyListScreenState extends State<CurrencyListScreen>
           const SizedBox(width: 12),
           Expanded(
             child: DropdownButton<String>(
+              key: _dropdownKey,
               value: _selectedBaseCurrency,
               isExpanded: true,
               underline: const SizedBox.shrink(),
+              onChanged: (String? newValue) {
+                if (newValue != null && newValue != _selectedBaseCurrency) {
+                  setState(() {
+                    _isDropdownOpen = false;
+                  });
+                  _dismissAllSelections();
+                  fetchExchangeRates(newBaseCurrency: newValue);
+                }
+              },
+              // Controla quando o dropdown abre/fecha
+              onTap: () {
+                _searchFocusNode.unfocus(); // Remove foco da busca
+                setState(() {
+                  _isDropdownOpen = !_isDropdownOpen;
+                });
+              },
               items: widget.supportedCodes
                   .map<DropdownMenuItem<String>>((currency) {
                 return DropdownMenuItem<String>(
@@ -358,11 +453,6 @@ class CurrencyListScreenState extends State<CurrencyListScreen>
                   ),
                 );
               }).toList(),
-              onChanged: (String? newValue) {
-                if (newValue != null && newValue != _selectedBaseCurrency) {
-                  fetchExchangeRates(newBaseCurrency: newValue);
-                }
-              },
             ),
           ),
         ],
@@ -375,13 +465,17 @@ class CurrencyListScreenState extends State<CurrencyListScreen>
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: TextField(
         controller: _searchController,
+        focusNode: _searchFocusNode,
         decoration: InputDecoration(
           hintText: 'Buscar por nome ou código...',
           prefixIcon: const Icon(Icons.search),
           suffixIcon: _searchController.text.isNotEmpty
               ? IconButton(
                   icon: const Icon(Icons.clear),
-                  onPressed: () => _searchController.clear())
+                  onPressed: () {
+                    _searchController.clear();
+                    _searchFocusNode.unfocus();
+                  })
               : null,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(30.0),
@@ -390,6 +484,17 @@ class CurrencyListScreenState extends State<CurrencyListScreen>
           filled: true,
           fillColor: Colors.white,
         ),
+        onTap: () {
+          // Fecha dropdown quando o campo de busca é tocado
+          if (_isDropdownOpen) {
+            setState(() {
+              _isDropdownOpen = false;
+            });
+          }
+        },
+        onSubmitted: (_) {
+          _searchFocusNode.unfocus();
+        },
       ),
     );
   }
@@ -454,7 +559,10 @@ class CurrencyListScreenState extends State<CurrencyListScreen>
             ElevatedButton.icon(
               icon: const Icon(Icons.refresh),
               label: const Text('Tentar Novamente'),
-              onPressed: () => fetchExchangeRates(),
+              onPressed: () {
+                _dismissAllSelections();
+                fetchExchangeRates();
+              },
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.white,
                 backgroundColor: AppColors.primary,
